@@ -4,9 +4,10 @@ import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import QRCodeScanner from './components/QRCodeScanner';
 import AdminDashboard from './components/AdminDashboard';
-import axios from 'axios'; // Import axios
-import { jwtDecode } from 'jwt-decode'; // Import jwt-decode
-import AdminLogin from './components/AdminLogin'; // Import AdminLogin component
+import ForgotPassword from './components/ForgotPassword';
+import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
+import AdminLogin from './components/AdminLogin';
 import './App.css';
 
 interface UserData {
@@ -21,13 +22,13 @@ interface UserData {
   plateRequestStatus?: 'pending' | 'started' | 'in-progress' | 'completed';
 }
 
-type AppView = 'login' | 'register' | 'dashboard' | 'qrscanner' | 'admin' | 'admin-login';
+type AppView = 'login' | 'register' | 'dashboard' | 'qrscanner' | 'admin' | 'admin-login' | 'forgot-password';
 
 function App() {
   const [currentView, setCurrentView] = useState<AppView>('login');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
-  const [userRequests, setUserRequests] = useState<any[]>([]); // To store requests fetched from backend
+  const [userRequests, setUserRequests] = useState<any[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
 
@@ -35,12 +36,9 @@ function App() {
     if (token) {
       try {
         const decoded: any = jwtDecode(token);
-        // Check if token is expired
         if (decoded.exp * 1000 < Date.now()) {
           handleLogout();
         } else {
-          // Simulate fetching user data based on token
-          // In a real app, you would make an API call to /api/auth/me to get full user data
           const userPosition = decoded.user.position;
           setIsLoggedIn(true);
           setIsAdmin(userPosition === 'admin');
@@ -56,6 +54,7 @@ function App() {
             plateRequestStatus: 'pending',
           });
           fetchUserRequests(token, userPosition);
+          setCurrentView(userPosition === 'admin' ? 'admin' : 'dashboard');
         }
       } catch (error) {
         console.error('Error decoding token:', error);
@@ -65,7 +64,6 @@ function App() {
       setIsLoggedIn(false);
       setIsAdmin(false);
       setUser(null);
-      // Determine initial view based on path, if admin path, redirect to admin login
       if (window.location.pathname.startsWith('/admin')) {
         setCurrentView('admin-login');
       } else {
@@ -91,24 +89,22 @@ function App() {
   const handleLogin = (userData: any) => {
     const newToken = localStorage.getItem('token');
     setToken(newToken);
-    // The useEffect will handle setting isLoggedIn, isAdmin, user, and currentView
   };
 
   const handleAdminLogin = (userData: any) => {
     const newToken = localStorage.getItem('token');
     setToken(newToken);
-    // The useEffect will handle setting isLoggedIn, isAdmin, user, and currentView
   };
 
   const handleRegister = (userData: any) => {
     const newToken = localStorage.getItem('token');
     setToken(newToken);
-    // The useEffect will handle setting isLoggedIn, isAdmin, user, and currentView
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     setToken(null);
+    setCurrentView('login');
   };
 
   const handlePlateRequestSubmit = async (formData: { vehicleColor: string, vehicleChassisNumber: string }) => {
@@ -130,8 +126,6 @@ function App() {
   };
 
   const handlePaymentSuccess = () => {
-    // This will ideally trigger a backend update for payment status
-    // For now, we'll just refetch requests
     if (token && user) {
       fetchUserRequests(token, user.position);
     }
@@ -140,7 +134,6 @@ function App() {
   const handleScanComplete = (scannedUserData: UserData) => {
     console.log('QR Scan Complete:', scannedUserData);
     alert(`Scanned User: ${scannedUserData.name}, Status: ${scannedUserData.plateRequestStatus}`);
-    // Optionally, update user requests in admin dashboard if admin is logged in
   };
 
   const handleUpdateUserRequestStatus = async (id: string, newStatus: UserData['plateRequestStatus']) => {
@@ -181,7 +174,6 @@ function App() {
           'Content-Type': 'multipart/form-data',
         },
       };
-      // Assume profileData can contain both text fields and the passportImage file
       const res = await axios.put('http://localhost:5000/api/profile', profileData, config);
       console.log('Profile updated:', res.data);
 
@@ -189,36 +181,50 @@ function App() {
         const imageRes = await axios.post('http://localhost:5000/api/profile/passport', profileData, config);
         console.log('Passport image uploaded:', imageRes.data);
       }
-      // Re-fetch user data to update the UI with new profile info
-      fetchUserRequests(token!, user?.position || 'user'); // This might need a dedicated fetchUser function
+      fetchUserRequests(token!, user?.position || 'user');
     } catch (error) {
       console.error('Failed to update profile:', error);
     }
   };
-return (
-  <div className="app-container">
+
+  return (
+    <div className="app-container">
       <header className="app-header">
-        <h1>Welcome to AdaQ</h1>
-        <p>A Plate Number Verification System</p>
+        <h1>AdaQ</h1>
+        <p>Secure Plate Number Verification System</p>
         <nav>
           {!isLoggedIn ? (
             <>
-              {currentView === 'admin-login' ? (
-                <button onClick={() => setCurrentView('login')} className={currentView === 'login' ? 'active' : ''}>User Login</button>
+              {currentView === 'admin-login' || currentView === 'forgot-password' ? (
+                <button onClick={() => setCurrentView('login')} className={currentView === 'login' ? 'active' : ''}>
+                  User Login
+                </button>
               ) : (
                 <>
-                  <button onClick={() => setCurrentView('login')} className={currentView === 'login' ? 'active' : ''}>Login</button>
-                  <button onClick={() => setCurrentView('register')} className={currentView === 'register' ? 'active' : ''}>Register</button>
+                  <button onClick={() => setCurrentView('login')} className={currentView === 'login' ? 'active' : ''}>
+                    Login
+                  </button>
+                  <button onClick={() => setCurrentView('register')} className={currentView === 'register' ? 'active' : ''}>
+                    Register
+                  </button>
                 </>
               )}
-              <button onClick={() => setCurrentView('admin-login')} className={currentView === 'admin-login' ? 'active' : ''}>Admin Login</button>
+              <button onClick={() => setCurrentView('admin-login')} className={currentView === 'admin-login' ? 'active' : ''}>
+                Admin Login
+              </button>
             </>
           ) : (
             <>
-              <button onClick={() => setCurrentView('dashboard')} className={currentView === 'dashboard' ? 'active' : ''}>Dashboard</button>
-              <button onClick={() => setCurrentView('qrscanner')} className={currentView === 'qrscanner' ? 'active' : ''}>Scan QR</button>
+              <button onClick={() => setCurrentView('dashboard')} className={currentView === 'dashboard' ? 'active' : ''}>
+                Dashboard
+              </button>
+              <button onClick={() => setCurrentView('qrscanner')} className={currentView === 'qrscanner' ? 'active' : ''}>
+                Scan QR
+              </button>
               {isAdmin && (
-                <button onClick={() => setCurrentView('admin')} className={currentView === 'admin' ? 'active' : ''}>Admin Dashboard</button>
+                <button onClick={() => setCurrentView('admin')} className={currentView === 'admin' ? 'active' : ''}>
+                  Admin Dashboard
+                </button>
               )}
               <button onClick={handleLogout}>Logout</button>
             </>
@@ -226,11 +232,24 @@ return (
         </nav>
       </header>
       <main className="app-main">
-        {currentView === 'login' && <Login onLogin={handleLogin} />}
+        {currentView === 'login' && (
+          <Login 
+            onLogin={handleLogin} 
+            onForgotPassword={() => setCurrentView('forgot-password')}
+          />
+        )}
         {currentView === 'register' && <Register onRegister={handleRegister} />}
+        {currentView === 'forgot-password' && (
+          <ForgotPassword onBack={() => setCurrentView('login')} />
+        )}
         {currentView === 'admin-login' && <AdminLogin onLogin={handleAdminLogin} />}
         {currentView === 'dashboard' && isLoggedIn && user && (
-          <Dashboard user={user} onPlateRequestSubmit={handlePlateRequestSubmit} onPaymentSuccess={handlePaymentSuccess} onUpdateProfile={handleUpdateProfile} />
+          <Dashboard 
+            user={user} 
+            onPlateRequestSubmit={handlePlateRequestSubmit} 
+            onPaymentSuccess={handlePaymentSuccess} 
+            onUpdateProfile={handleUpdateProfile} 
+          />
         )}
         {currentView === 'qrscanner' && isLoggedIn && (
           <QRCodeScanner onScanComplete={handleScanComplete} />
@@ -244,7 +263,7 @@ return (
         )}
       </main>
     </div>
-  )};
-  
+  );
+}
 
 export default App;

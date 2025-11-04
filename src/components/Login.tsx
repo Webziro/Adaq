@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios'; // Import axios
-import {jwtDecode} from 'jwt-decode'; // Import jwt-decode
+import axios from 'axios';
+import {jwtDecode} from 'jwt-decode';
 
 interface UserData {
   id: string;
@@ -14,58 +14,67 @@ interface UserData {
   plateRequestStatus?: 'pending' | 'started' | 'in-progress' | 'completed';
 }
 
-//The void means indicates that this function doesn't return any value
 interface LoginProps {
   onLogin: (userData: UserData) => void;
+  onForgotPassword: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
+    setMessage('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
+    setMessage('');
+    
     try {
       const res = await axios.post('http://localhost:5000/api/auth/login', formData);
       console.log(res.data);
       setMessage('Login successful!');
       localStorage.setItem('token', res.data.token);
 
-      const decoded: any = jwtDecode(res.data.token); // Decode the token
-      const userPosition = decoded.user.position; // Get user position from token
+      const decoded: any = jwtDecode(res.data.token);
+      const userPosition = decoded.user.position;
 
-      // For simplicity, let's assume we fetch full user data or construct it from token
-      // In a real app, you might fetch full user profile here
       onLogin({
         id: decoded.user.id,
-        name: 'User Name', // Placeholder, fetch from backend or decode more info
+        name: 'User Name',
         email: formData.email,
-        nin: '', // Placeholder
-        passport: '', // Placeholder
-        vehicleColor: '', // Placeholder
-        vehicleChassisNumber: '', // Placeholder
+        nin: '',
+        passport: '',
+        vehicleColor: '',
+        vehicleChassisNumber: '',
         position: userPosition,
-        plateRequestStatus: 'pending', // Placeholder
+        plateRequestStatus: 'pending',
       });
     } catch (err: any) {
       console.error(err.response?.data?.msg || err.message);
-      setMessage(err.response?.data?.msg || 'Login failed.');
+      setError(err.response?.data?.msg || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="login-container">
-      <h2>Welcome back! Login</h2>
+      <h2>Welcome Back!</h2>
+      <p className="instruction-text">Sign in to continue to your account</p>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="email">Email:</label>
+          <label htmlFor="email">Email Address:</label>
           <input
             type="email"
             id="email"
@@ -73,6 +82,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             value={formData.email}
             onChange={handleChange}
             required
+            disabled={loading}
+            placeholder="your.email@example.com"
           />
         </div>
         <div className="form-group">
@@ -84,11 +95,28 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             value={formData.password}
             onChange={handleChange}
             required
+            disabled={loading}
+            placeholder="Enter your password"
           />
         </div>
-        <button type="submit">Login</button>
+        
+        <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
+          <button 
+            type="button" 
+            onClick={onForgotPassword}
+            className="back-link"
+            style={{ width: 'auto', display: 'inline-block' }}
+          >
+            Forgot Password?
+          </button>
+        </div>
+        
+        <button type="submit" disabled={loading}>
+          {loading ? 'Signing In...' : 'Sign In'}
+        </button>
       </form>
-      {message && <p>{message}</p>}
+      {message && <p className="success-message">{message}</p>}
+      {error && <p className="error-message">{error}</p>}
     </div>
   );
 };

@@ -20,8 +20,9 @@ const Register: React.FC<RegisterProps> = ({ onRegister }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      setMessage('Passwords do not match.');
+  // Must contain at least 6 characters, special characters, numbers, uppercase and lowercase letters
+    if (formData.password !== formData.confirmPassword || formData.password.length < 6 || !/[!@#$%^&*]/.test(formData.password) || !/[0-9]/.test(formData.password) || !/[A-Z]/.test(formData.password) || !/[a-z]/.test(formData.password)) {
+      setMessage('Passwords do not match or do not meet complexity requirements.');
       return;
     }
 

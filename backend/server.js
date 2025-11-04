@@ -17,7 +17,7 @@ app.use(apiLimiter); // Apply general API rate limiting
 app.get('/', (req, res) => res.send('API Running'));
 
 // Define Routes
-app.use('/api/auth', authLimiter, require('./routes/auth')); // Apply auth rate limiting
+app.use('/api/auth', authLimiter, require('./routes/auth')); // Apply auth rate limiting   
 app.use('/api/requests', require('./routes/plateRequests')); // Add plate requests routes
 app.use('/api/profile', require('./routes/profile')); // Add profile routes
 app.use('/uploads', express.static('uploads')); // Serve static uploaded files
