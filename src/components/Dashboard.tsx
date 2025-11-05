@@ -65,7 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onPlateRequestSubmit, onPay
 
   return (
     <div className="dashboard-container">
-      <h2>Welcome, {user.name}!</h2>
+      
       <div className="user-details">
         <h3>Your Details</h3>
         <p><strong>Email:</strong> {user.email}</p>
@@ -128,13 +128,24 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onPlateRequestSubmit, onPay
       <div className="plate-request-status">
         <h3>Plate Number Request Status</h3>
         <p>Your request is currently: <strong>{user.plateRequestStatus || 'N/A'}</strong></p>
+        {user.plateRequestStatus === 'pending' && (
+          <PaymentButton 
+            amount={5000} // Example amount
+            onSuccess={handlePaymentSuccessClick}
+            onClose={() => {}}
+          />
+        )}
+      </div>
+
+      <div className="quick-actions">
+        <h3>Quick Actions</h3>
+        <p>Request or Renew your Number</p>
         {!showPlateForm && user.plateRequestStatus !== 'in-progress' && (
-          <button onClick={() => setShowPlateForm(true)}>Request New Plate Number</button>
+          <button onClick={() => setShowPlateForm(true)}>Request Now</button>
         )}
         {showPlateForm && (
           <PlateRegistrationForm onSubmit={handleFormSubmit} onPaymentSuccess={handlePaymentSuccessClick} />
         )}
-        {user.plateRequestStatus === 'pending' && <PaymentButton onPaymentSuccess={handlePaymentSuccessClick} />}
       </div>
     </div>
   );

@@ -9,18 +9,7 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import AdminLogin from './components/AdminLogin';
 import './App.css';
-
-interface UserData {
-  id: string;
-  name: string;
-  email: string;
-  nin?: string;
-  passport?: string;
-  vehicleColor?: string;
-  vehicleChassisNumber?: string;
-  position: 'user' | 'admin';
-  plateRequestStatus?: 'pending' | 'started' | 'in-progress' | 'completed';
-}
+import type { UserData } from './types'; // Import UserData as a type
 
 type AppView = 'login' | 'register' | 'dashboard' | 'qrscanner' | 'admin' | 'admin-login' | 'forgot-password';
 
@@ -32,6 +21,22 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
 
+  // Function to fetch user profile
+  const fetchUserProfile = async (authToken: string) => {
+    try {
+      const config = {
+        headers: {
+          'x-auth-token': authToken,
+        },
+      };
+      const res = await axios.get('http://localhost:5000/api/profile', config);
+      setUser(res.data);
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+      handleLogout(); // Log out if profile cannot be fetched
+    }
+  };
+
   useEffect(() => {
     if (token) {
       try {
@@ -42,18 +47,14 @@ function App() {
           const userPosition = decoded.user.position;
           setIsLoggedIn(true);
           setIsAdmin(userPosition === 'admin');
-          setUser({ 
-            id: decoded.user.id,
-            name: 'Loaded User',
-            email: decoded.user.email || '',
-            nin: '',
-            passport: '',
-            vehicleColor: '',
-            vehicleChassisNumber: '',
-            position: userPosition,
-            plateRequestStatus: 'pending',
-          });
-          fetchUserRequests(token, userPosition);
+          // Fetch full user profile after successful login/token validation
+          const loadUserProfile = async () => {
+            await fetchUserProfile(token);
+            await fetchUserRequests(token, userPosition); // Also await fetchUserRequests
+          };
+          loadUserProfile();
+
+          // fetchUserRequests(token, userPosition);
           setCurrentView(userPosition === 'admin' ? 'admin' : 'dashboard');
         }
       } catch (error) {
@@ -86,19 +87,28 @@ function App() {
     }
   };
 
-  const handleLogin = (userData: any) => {
+  const handleLogin = async (userData: any) => {
     const newToken = localStorage.getItem('token');
     setToken(newToken);
+    if (newToken) {
+      await fetchUserProfile(newToken); // Fetch profile after login
+    }
   };
 
-  const handleAdminLogin = (userData: any) => {
+  const handleAdminLogin = async (userData: any) => {
     const newToken = localStorage.getItem('token');
     setToken(newToken);
+    if (newToken) {
+      await fetchUserProfile(newToken); // Fetch profile after admin login
+    }
   };
 
-  const handleRegister = (userData: any) => {
+  const handleRegister = async (userData: any) => {
     const newToken = localStorage.getItem('token');
     setToken(newToken);
+    if (newToken) {
+      await fetchUserProfile(newToken); // Fetch profile after registration
+    }
   };
 
   const handleLogout = () => {
@@ -171,17 +181,38 @@ function App() {
       const config = {
         headers: {
           'x-auth-token': token,
-          'Content-Type': 'multipart/form-data',
         },
       };
-      const res = await axios.put('http://localhost:5000/api/profile', profileData, config);
-      console.log('Profile updated:', res.data);
+
+      const updateFields: Partial<UserData> = {};
+      if (profileData.has('nin')) updateFields.nin = profileData.get('nin') as string;
+      if (profileData.has('vehicleColor')) updateFields.vehicleColor = profileData.get('vehicleColor') as string;
+      if (profileData.has('vehicleChassisNumber')) updateFields.vehicleChassisNumber = profileData.get('vehicleChassisNumber') as string;
+
+      if (Object.keys(updateFields).length > 0) {
+        const res = await axios.put('http://localhost:5000/api/profile', updateFields, config);
+        console.log('Profile updated:', res.data);
+        setUser((prevUser) => ({
+          ...prevUser!,
+          ...res.data.user,
+        }));
+      }
 
       if (profileData.has('passportImage')) {
-        const imageRes = await axios.post('http://localhost:5000/api/profile/passport', profileData, config);
+        const imageConfig = {
+          headers: {
+            'x-auth-token': token,
+            'Content-Type': 'multipart/form-data',
+          },
+        };
+        const imageRes = await axios.post('http://localhost:5000/api/profile/passport', profileData, imageConfig);
         console.log('Passport image uploaded:', imageRes.data);
+        setUser((prevUser) => ({
+          ...prevUser!,
+          passport: imageRes.data.passportPath,
+        }));
       }
-      fetchUserRequests(token!, user?.position || 'user');
+      fetchUserProfile(token!); // Refresh user profile after update
     } catch (error) {
       console.error('Failed to update profile:', error);
     }
@@ -196,7 +227,7 @@ function App() {
           {!isLoggedIn ? (
             <>
               {currentView === 'admin-login' || currentView === 'forgot-password' ? (
-                <button onClick={() => setCurrentView('login')} className={currentView === 'login' ? 'active' : ''}>
+                <button onClick={() => setCurrentView('login')}>
                   User Login
                 </button>
               ) : (

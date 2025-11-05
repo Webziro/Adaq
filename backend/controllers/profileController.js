@@ -1,5 +1,18 @@
 const User = require('../models/User');
 
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password'); // Exclude password
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    res.json(user);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
 exports.updateProfile = async (req, res) => {
   const { nin, passport, vehicleColor, vehicleChassisNumber, position } = req.body;
 
@@ -11,20 +24,25 @@ exports.updateProfile = async (req, res) => {
   if (position) profileFields.position = position;
 
   try {
+    console.log('Received profile update for user:', req.user.id, 'with fields:', profileFields);
     let user = await User.findById(req.user.id);
 
-    if (!user) return res.status(404).json({ msg: 'User not found' });
+    if (!user) {
+      console.log('User not found for ID:', req.user.id);
+      return res.status(404).json({ msg: 'User not found' });
+    }
 
     // Update and save profile
     user = await User.findByIdAndUpdate(
       req.user.id,
       { $set: profileFields },
-      { new: true }
+      { new: true, runValidators: true } // Added runValidators for schema validation
     );
 
-    res.json(user);
+    console.log('User profile after update:', user);
+    res.json({ user }); // Wrap user in an object to match frontend expectation
   } catch (err) {
-    console.error(err.message);
+    console.error('Profile update error:', err.message);
     res.status(500).send('Server error');
   }
 };

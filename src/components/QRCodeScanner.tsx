@@ -1,15 +1,5 @@
 import React, { useState } from 'react';
-
-interface UserData {
-  name: string;
-  email: string;
-  nin: string;
-  passport: string;
-  vehicleColor: string;
-  vehicleChassisNumber: string;
-  position: string;
-  plateRequestStatus: 'started' | 'in-progress' | 'completed' | 'pending';
-}
+import type { UserData } from '../types'; // Import UserData as a type
 
 interface QRCodeScannerProps {
   onScanComplete: (data: UserData) => void;
@@ -24,15 +14,16 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScanComplete }) => {
     // Simulate a delay for scanning
     setTimeout(() => {
       // Simulate scanned QR code data
-      const dummyQRData = {
+      const dummyQRData: UserData = {
+        id: 'dummy_user_id',
         name: 'Jane Doe',
         email: 'jane.doe@example.com',
         nin: '1098765432',
         passport: 'PQR789UVW',
         vehicleColor: 'Green',
         vehicleChassisNumber: '0987654321FEDCBA',
-        position: 'Driver',
-        plateRequestStatus: 'completed',
+        position: 'user', // Changed to 'user' to match enum
+        plateRequestStatus: 'completed', // Ensure this matches enum
       };
       setQrData(JSON.stringify(dummyQRData));
       setScanning(false);
