@@ -73,7 +73,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onPlateRequestSubmit, onPay
         {user.passport && <p><strong>Passport:</strong> <img src={`http://localhost:5000${user.passport}`} alt="Passport" style={{width: '100px'}} /></p>}
         {user.vehicleColor && <p><strong>Vehicle Color:</strong> {user.vehicleColor}</p>}
         {user.vehicleChassisNumber && <p><strong>Vehicle Chassis Number:</strong> {user.vehicleChassisNumber}</p>}
-        <p><strong>Position:</strong> {user.position}</p>
+        {/* <p><strong>Position:</strong> {user.position}</p> */}
         <button onClick={() => setShowProfileUpdateForm(!showProfileUpdateForm)}>
           {showProfileUpdateForm ? 'Cancel Profile Update' : 'Update Profile'}
         </button>
@@ -124,6 +124,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onPlateRequestSubmit, onPay
           </form>
         )}
       </div>
+      
       <div className="plate-request-status">
         <h3>Plate Number Request Status</h3>
         <p>Your request is currently: <strong>{user.plateRequestStatus || 'N/A'}</strong></p>
