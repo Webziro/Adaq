@@ -1,6 +1,5 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
 
 // In-memory store for reset codes (in production, use Redis or database)
 const resetCodes = new Map();
@@ -14,36 +13,45 @@ exports.requestPasswordReset = async (req, res) => {
   const { email } = req.body;
 
   try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      // For security, don't reveal if user exists
-      return res.json({ msg: 'If the email exists, a reset code has been sent.' });
+    // Validate email input
+    if (!email) {
+      return res.status(400).json({ msg: 'Email is required.' });
     }
 
-    // Generate reset code
-    const resetCode = generateResetCode();
-    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+    const user = await User.findOne({ email });
+    
+    // Always return success to prevent email enumeration
+    // But only generate code if user exists
+    if (user) {
+      // Generate reset code
+      const resetCode = generateResetCode();
+      const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
 
-    // Store reset code with expiration
-    resetCodes.set(email, {
-      code: resetCode,
-      expiresAt,
-      attempts: 0
-    });
+      // Store reset code with expiration
+      resetCodes.set(email, {
+        code: resetCode,
+        expiresAt,
+        attempts: 0,
+        verified: false
+      });
 
-    // TODO: In production, send email with reset code
-    // For now, log to console (in development)
-    console.log(`Reset code for ${email}: ${resetCode}`);
-    console.log(`This code expires in 15 minutes`);
+      // Log to console for development
+      console.log('=================================');
+      console.log(`Password Reset Code for: ${email}`);
+      console.log(`Code: ${resetCode}`);
+      console.log(`Expires at: ${new Date(expiresAt).toLocaleTimeString()}`);
+      console.log('=================================');
+    }
 
+    // Always return success message
     res.json({ 
-      msg: 'A reset code has been sent to your email.',
-      // In development only, include code in response
-      ...(process.env.NODE_ENV === 'development' && { code: resetCode })
+      msg: 'If the email exists, a reset code has been sent.',
+      success: true
     });
+
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Password reset request error:', err.message);
+    res.status(500).json({ msg: 'Server error. Please try again later.' });
   }
 };
 
@@ -51,6 +59,11 @@ exports.verifyResetCode = async (req, res) => {
   const { email, code } = req.body;
 
   try {
+    // Validate inputs
+    if (!email || !code) {
+      return res.status(400).json({ msg: 'Email and code are required.' });
+    }
+
     const resetData = resetCodes.get(email);
 
     if (!resetData) {
@@ -60,7 +73,7 @@ exports.verifyResetCode = async (req, res) => {
     // Check if code is expired
     if (Date.now() > resetData.expiresAt) {
       resetCodes.delete(email);
-      return res.status(400).json({ msg: 'Reset code has expired.' });
+      return res.status(400).json({ msg: 'Reset code has expired. Please request a new one.' });
     }
 
     // Check attempts (max 5)
@@ -70,18 +83,26 @@ exports.verifyResetCode = async (req, res) => {
     }
 
     // Verify code
-    if (resetData.code !== code) {
+    if (resetData.code !== code.trim()) {
       resetData.attempts += 1;
-      return res.status(400).json({ msg: 'Invalid reset code.' });
+      resetCodes.set(email, resetData);
+      return res.status(400).json({ 
+        msg: `Invalid reset code. ${5 - resetData.attempts} attempts remaining.` 
+      });
     }
 
     // Mark as verified
     resetData.verified = true;
+    resetData.attempts = 0;
+    resetCodes.set(email, resetData);
 
-    res.json({ msg: 'Code verified successfully.' });
+    console.log(`Code verified successfully for: ${email}`);
+
+    res.json({ msg: 'Code verified successfully.', success: true });
+
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Code verification error:', err.message);
+    res.status(500).json({ msg: 'Server error. Please try again later.' });
   }
 };
 
@@ -89,26 +110,36 @@ exports.resetPassword = async (req, res) => {
   const { email, code, newPassword } = req.body;
 
   try {
+    // Validate inputs
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ msg: 'All fields are required.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ msg: 'Password must be at least 6 characters long.' });
+    }
+
     const resetData = resetCodes.get(email);
 
     if (!resetData || !resetData.verified) {
-      return res.status(400).json({ msg: 'Invalid or expired reset session.' });
+      return res.status(400).json({ msg: 'Invalid or expired reset session. Please start over.' });
     }
 
-    // Verify code again
-    if (resetData.code !== code) {
+    // Verify code again for security
+    if (resetData.code !== code.trim()) {
       return res.status(400).json({ msg: 'Invalid reset code.' });
     }
 
     // Check if expired
     if (Date.now() > resetData.expiresAt) {
       resetCodes.delete(email);
-      return res.status(400).json({ msg: 'Reset session has expired.' });
+      return res.status(400).json({ msg: 'Reset session has expired. Please start over.' });
     }
 
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
+      resetCodes.delete(email);
       return res.status(400).json({ msg: 'User not found.' });
     }
 
@@ -120,19 +151,35 @@ exports.resetPassword = async (req, res) => {
     // Clean up reset code
     resetCodes.delete(email);
 
-    res.json({ msg: 'Password reset successful.' });
+    console.log(`Password reset successful for: ${email}`);
+
+    res.json({ msg: 'Password reset successful. You can now login with your new password.', success: true });
+
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Password reset error:', err.message);
+    res.status(500).json({ msg: 'Server error. Please try again later.' });
   }
 };
 
-// Clean up expired codes every hour
-setInterval(() => {
+// Clean up expired codes every 30 minutes
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
+  let cleanedCount = 0;
+  
   for (const [email, data] of resetCodes.entries()) {
     if (now > data.expiresAt) {
       resetCodes.delete(email);
+      cleanedCount++;
     }
   }
-}, 60 * 60 * 1000); // Run every hour
+  
+  if (cleanedCount > 0) {
+    console.log(`Cleaned up ${cleanedCount} expired reset codes`);
+  }
+}, 30 * 60 * 1000); // Run every 30 minutes
+
+// Export cleanup function for graceful shutdown
+exports.cleanup = () => {
+  clearInterval(cleanupInterval);
+  resetCodes.clear();
+};
