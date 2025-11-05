@@ -165,7 +165,7 @@ const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBack }) => {
           <p className="instruction-text">
             Enter the 6-digit code sent to <strong>{email}</strong>
             <br />
-            <small>Check your console in development mode</small>
+            {/* <small>Check your console in development mode</small> */}
           </p>
           <div className="form-group">
             <label htmlFor="code">Reset Code:</label>
