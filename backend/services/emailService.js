@@ -153,15 +153,6 @@ exports.sendPasswordResetEmail = async (email, resetCode, userName = 'User') => 
               </p>
             </div>
             
-            <div class="content">
-              <p><strong>To reset your password:</strong></p>
-              <ol>
-                <li>Go to the password reset page</li>
-                <li>Enter this verification code</li>
-                <li>Create your new password</li>
-              </ol>
-            </div>
-            
             <div class="warning">
               <strong>⚠️ Security Notice:</strong>
               <ul style="margin: 10px 0 0 0; padding-left: 20px;">
@@ -192,11 +183,7 @@ exports.sendPasswordResetEmail = async (email, resetCode, userName = 'User') => 
         
         This code will expire in 15 minutes.
         
-        To reset your password:
-        1. Go to the password reset page
-        2. Enter this verification code
-        3. Create your new password
-        
+      
         Security Notice:
         - This code expires in 15 minutes
         - Never share this code with anyone
