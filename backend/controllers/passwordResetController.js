@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const { sendPasswordResetEmail } = require('../services/emailService');
 
 // In-memory store for reset codes (in production, use Redis or database)
 const resetCodes = new Map();
@@ -35,12 +36,8 @@ exports.requestPasswordReset = async (req, res) => {
         verified: false
       });
 
-      // Log to console for development
-      console.log('=================================');
-      console.log(`Password Reset Code for: ${email}`);
-      console.log(`Code: ${resetCode}`);
-      console.log(`Expires at: ${new Date(expiresAt).toLocaleTimeString()}`);
-      console.log('=================================');
+      // Send the reset code via email
+      await sendPasswordResetEmail(email, resetCode, user.name || email); // Assuming user has a 'name' field
     }
 
     // Always return success message
@@ -96,8 +93,6 @@ exports.verifyResetCode = async (req, res) => {
     resetData.attempts = 0;
     resetCodes.set(email, resetData);
 
-    console.log(`Code verified successfully for: ${email}`);
-
     res.json({ msg: 'Code verified successfully.', success: true });
 
   } catch (err) {
@@ -115,8 +110,10 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ msg: 'All fields are required.' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ msg: 'Password must be at least 6 characters long.' });
+    //Contain at least 6 characters, special characters, numbers, uppercase and lowercase letters
+    const passwordRequirements = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+    if (!passwordRequirements.test(newPassword)) {
+      return res.status(400).json({ msg: 'Password must be at least 6 characters long and contain uppercase, lowercase, number and special character .' });
     }
 
     const resetData = resetCodes.get(email);
@@ -150,8 +147,6 @@ exports.resetPassword = async (req, res) => {
 
     // Clean up reset code
     resetCodes.delete(email);
-
-    console.log(`Password reset successful for: ${email}`);
 
     res.json({ msg: 'Password reset successful. You can now login with your new password.', success: true });
 
