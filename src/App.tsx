@@ -9,6 +9,10 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import AdminLogin from './components/AdminLogin';
 import './App.css';
+import '@fontsource/roboto/300.css';
+import '@fontsource/roboto/400.css';
+import '@fontsource/roboto/500.css';
+import '@fontsource/roboto/700.css';
 import type { UserData } from './types'; // Import UserData as a type
 
 type AppView = 'login' | 'register' | 'dashboard' | 'qrscanner' | 'admin' | 'admin-login' | 'forgot-password';
