@@ -28,6 +28,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background-color: #ffffff; /* Ensure body also has white background */
+  padding: 0;
 }
 
 h1 {
