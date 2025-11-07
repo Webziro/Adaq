@@ -71,7 +71,7 @@ const PlateRegistrationForm: React.FC<PlateRegistrationFormProps> = ({ onSubmit 
                     type="submit" 
                     className="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 transition font-semibold"
                 >
-                    Submit Request
+                    Submit a Request
                 </button>
             </form>
         </div>
